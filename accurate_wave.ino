@@ -1,8 +1,30 @@
-const int analogPin =  A0;  // Analog input pin
-const int analogPin1 = A1;
-const int analogPin2 = A2;
+const int analogPin = 39;  // Analog input pin
+const int analogPin1 = 36;
+const int analogPin2 = 34;
+
+unsigned long currentMillis1;
+unsigned long currentMillis2;
+unsigned long currentMillis3;
+
+int threshold = 100;          // Threshold value for zero-crossing detection
+int previousAnalogValue = 0;  // Previous analog value
+int previousAnalogValueY = 0;
+int previousAnalogValueB = 0;
+bool zeroCrossingDetected = false;  // Flag for zero-crossing detection
+bool zeroCrossingDetectedY = false;
+bool zeroCrossingDetectedB = false;
+int freqncyR, freqncyY, freqncyB;
+int time1;
+int time2;
+int time3;
+int analogValue, analogValue1, analogValue2;
+
+unsigned long previousMillis = 0;
+const long interval = 1000;
+
+
 ////////////////////////////////////////////////////////////////////////////////////////
-const int numReadings = 10;  // Number of readings to average
+const int numReadings = 20;  // Number of readings to average
 int readings[numReadings];   // Array to store the readings
 int currentIndex = 0;        // Current index in the readings array
 int peakValue = 0;           // Variable to store the peak value
@@ -24,7 +46,7 @@ int averageReadingB;
 
 
 
-#define SAMPLING 400
+#define SAMPLING 300
 #define VOFFSET 0.0
 #define AMPLITUDE 1023  //300.6
 #define REAL_VAC 270.5
@@ -45,20 +67,91 @@ void setup() {
 }
 
 void loop() {
-  
+
   //  averageReading = getAverageReading();
   // Print average and peak values
   // Serial.print("Average Reading: ");
 
-  // read_VAC();
-  // read_VACY();
-  // read_VACB();
+  read_VAC();
+  read_VACY();
+  read_VACB();
 
-  Serial.print(getAverageReading());
-  Serial.print(",");
-  Serial.print(getAverageReadingY());
-  Serial.print(",");
-  Serial.println(getAverageReadingB());
+  analogValue = analogRead(analogPin);
+  analogValue1 = analogRead(analogPin1);
+  analogValue2 = analogRead(analogPin2);
+
+
+  if ((analogValue > threshold && previousAnalogValue < threshold) || (analogValue < threshold && previousAnalogValue > threshold)) {
+    zeroCrossingDetected = true;
+    freqncyR++;
+    if (analogValue > threshold) {
+      currentMillis1 = millis();
+    }
+    if (analogValue < threshold) {
+      unsigned long currentMillis = millis();
+      time1 = currentMillis - currentMillis1;
+      currentMillis1 = 0;
+    }
+  }
+
+
+
+  if ((analogValue1 > threshold && previousAnalogValueY < threshold) || (analogValue1 < threshold && previousAnalogValueY > threshold)) {
+    zeroCrossingDetectedY = true;
+    freqncyY++;
+    if (analogValue1 > threshold) {
+      currentMillis2 = millis();
+    }
+    if (analogValue1 < threshold) {
+      unsigned long currentMillis = millis();
+      time2 = currentMillis - currentMillis2;
+      currentMillis2 = 0;
+    }
+  }
+
+
+
+  if ((analogValue2 > threshold && previousAnalogValueB < threshold) || (analogValue2 < threshold && previousAnalogValueB > threshold)) {
+    zeroCrossingDetectedB = true;
+    freqncyB++;
+    if (analogValue2 > threshold) {
+      currentMillis3 = millis();
+    }
+    if (analogValue2 < threshold) {
+      unsigned long currentMillis = millis();
+      time3 = currentMillis - currentMillis3;
+      currentMillis3 = 0;
+    }
+  }
+
+  previousAnalogValue = analogValue;
+  previousAnalogValueY = analogValue1;
+  previousAnalogValueB = analogValue2;
+
+
+  unsigned long currentMillis = millis();
+  if (currentMillis - previousMillis >= interval) {
+    previousMillis = currentMillis;
+    Serial.print(freqncyR / 2);
+    Serial.print(",");
+    Serial.print(freqncyY / 2);
+    Serial.print(",");
+    Serial.println(freqncyB / 2);
+    time1 = 0;
+    time2 = 0;
+    time3 = 0;
+    freqncyR = 0;
+    freqncyY = 0;
+    freqncyB = 0;
+  }
+
+
+
+  // Serial.print(getAverageReading());
+  // Serial.print(",");
+  // Serial.print(getAverageReadingY());
+  // Serial.print(",");
+  // Serial.println(getAverageReadingB());
 
   R = ((adc_vpp * 4.9 / 1023.0));
   Y = ((adc_vppY * 4.9 / 1023.0));
@@ -104,7 +197,7 @@ int getAverageReading() {
   }
 
   // Read new value and add it to the total
-  readings[numReadings - 1] = analogRead(analogPin);
+  readings[numReadings - 1] = analogValue;  //analogValue;
   total += readings[numReadings - 1];
 
   // Calculate average
@@ -125,7 +218,8 @@ void read_VAC() {
 
   for (cnt = 0; cnt < SAMPLING; cnt++) {
     // analogReadResolution(10);
-    float adc = getAverageReading();
+    int adc = getAverageReading();
+    // analogValue = adc;
     // Serial.println(analgpin0);
     if (adc > adc_max) {
       adc_max = adc;
@@ -148,6 +242,7 @@ void read_VACY() {
   for (cnt = 0; cnt < SAMPLING; cnt++) {
     // analogReadResolution(10);
     float adc = getAverageReadingY();
+
     // Serial.println(analgpin0);
     if (adc > adc_max) {
       adc_max = adc;
@@ -183,11 +278,6 @@ void read_VACB() {
   adc_vppB = adc_max - adc_min;
 }
 
-
-
-
-
-
 int getAverageReadingY() {
   int total = 0;
 
@@ -198,7 +288,7 @@ int getAverageReadingY() {
   }
 
   // Read new value and add it to the total
-  readingsY[numReadingsY - 1] = analogRead(analogPin1);
+  readingsY[numReadingsY - 1] = analogValue1;
   total += readingsY[numReadingsY - 1];
 
   // Calculate average
@@ -212,11 +302,6 @@ int getAverageReadingY() {
   return average;
 }
 
-
-
-
-
-
 int getAverageReadingB() {
   int total = 0;
 
@@ -227,7 +312,7 @@ int getAverageReadingB() {
   }
 
   // Read new value and add it to the total
-  readingsB[numReadingsB - 1] = analogRead(analogPin2);
+  readingsB[numReadingsB - 1] = analogValue2;
   total += readingsB[numReadingsB - 1];
 
   // Calculate average
